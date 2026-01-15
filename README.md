@@ -1,5 +1,4 @@
-# hydraulic-network-solver
-# Hydraulic 0‑D Network Solver (Python)
+# Hydraulic 0‑D Network Solver
 
 Steady-state hydraulic network solver for incompressible flow networks including pipes, pumps, and (optional) check valves. It computes branch flow rates and node pressures by solving mass balance at nodes and energy balance across branches. 
 
