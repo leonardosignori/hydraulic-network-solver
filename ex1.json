@@ -1,0 +1,29 @@
+{
+  "fluid": { "rho": 860.0, "mu": 0.003 },
+  "nodes": {
+    "L2339":   { "type": "pressure", "P": 110000, "z": 1.0 },
+    "PUMP_IN_1": { "type": "junction", "z": 0.1 },
+    "PUMP_IN": { "type": "junction", "z": 0.1 },
+    "PUMP_OUT":{ "type": "junction", "z": 0.3 },
+    "LOAD":    { "type": "flow", "Q": -0.0125, "z": 10.0 }
+  },
+  "branches": [
+    { "id": "DN80", "from": "L2339",  "to": "PUMP_IN_1",
+      "type": "pipe", "L": 2.0, "DN": 80, "k_local": 5.95 },
+
+    { "id": "PIPE_SUCT", "from": "PUMP_IN_1",  "to": "PUMP_IN",
+      "type": "pipe", "L": 8.0, "DN": 50 },
+
+    { "id": "PUMP1", "from": "PUMP_IN", "to": "PUMP_OUT", "type": "pump",
+      "curve": {
+        "points": [
+          [0.0082, 24.11], [0.0089, 23.58], [0.0101, 22.31],
+          [0.0113, 21.12], [0.0118, 20.52], [0.0129, 19.25],
+          [0.0134, 18.66], [0.0140, 17.77], [0.0151, 16.06]
+        ]
+      }},
+
+    { "id": "PIPE_DIS", "from": "PUMP_OUT", "to": "LOAD",
+      "type": "pipe", "L": 50.0, "DN": 100, "k_local": 25.35 }
+  ]
+}
