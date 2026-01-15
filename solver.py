@@ -94,8 +94,8 @@ class PumpCurve:
 # ===================================================================
 @dataclass
 class Fluid:
-    rho: float   # densità [kg/m³]
-    mu: float    # viscosità dinamica [Pa·s]
+    rho: float   # density [kg/m³]
+    mu: float    # dinamic viscosity [Pa·s]
     g: float = G
 
 @dataclass
@@ -166,7 +166,7 @@ class Branch:
         raise ValueError(self.type)
 
 # ===================================================================
-# Rete idraulica
+# Hydraulic Network 
 # ===================================================================
 class HydraulicNetwork:
     # [P1] auto-scale helper
@@ -175,7 +175,7 @@ class HydraulicNetwork:
         if self._Qext:
             Q_char = sum(abs(q) for q in self._Qext.values())
         else:
-            Q_char = 1e-4  # safe default when no external flows are specified
+            Q_char = 1e-4  
 
         # ---- Pressure scale (Pa)
         rho_g = self.f.rho * self.f.g
@@ -225,7 +225,7 @@ class HydraulicNetwork:
             res[b.id] = P[b.from_node] - P[b.to_node] + self.f.rho * self.f.g * (zf - zt) - b.delta_p(Q[b.id], self.f)
         return res
 
-    """Solver stazionario 0-D con scaling residui, Jacobiano analitico, e opzione sparsa."""
+    """Solver with residual scaling, analytic Jacobian and spars option."""
     def __init__(self, fluid: Fluid, nodes: Dict[str, Node], branches: List[Branch]):
         self.f, self.nodes, self.br = fluid, nodes, branches
         self._iQ = {b.id: i for i, b in enumerate(branches)}
@@ -279,7 +279,7 @@ class HydraulicNetwork:
             brs.append(Branch(id=b["id"], from_node=b["from"], to_node=b["to"], type=tp, params=params, curve=curve))
         return cls(fluid, nodes, brs)
 
-    # -------------------- stima iniziale ---------------------------
+    # -------------------- initial guess solution contruction ---------------------------
     def build_initial_guess(self, Q_seed: float = 0.02, P_seed: float = 2.0e5) -> np.ndarray:
         nQ, nP = len(self._unk_br), len(self._unk_nd)
         return np.hstack([np.full(nQ, Q_seed), np.full(nP, P_seed)])
@@ -299,12 +299,12 @@ class HydraulicNetwork:
                 Qphys[b.id] = qhat
         P = {**self._Pfix, **{nid: Pv[idx] for nid, idx in self._iP.items()}}
         r = np.zeros_like(x)
-        # energia (one per branch) using physical flows
+        # energy (one per branch) using physical flows
         for b in self._unk_br:
             zf = self.nodes[b.from_node].z
             zt = self.nodes[b.to_node].z
             r[self._iQ[b.id]] = P[b.from_node] - P[b.to_node] + self.f.rho * self.f.g * (zf - zt) - b.delta_p(Qphys[b.id], self.f)
-        # massa (one per unknown-P node) using physical flows
+        # mass (one per unknown-P node) using physical flows
         for n in self._unk_nd:
             mass = self._Qext.get(n.id, 0.0)
             for b in self._unk_br:
@@ -336,7 +336,7 @@ class HydraulicNetwork:
             else:
                 dmap[i] = 1.0
                 Qloc[i] = qhat
-        # energia rows
+        # energy rows
         for b in self._unk_br:
             i = self._iQ[b.id]
             d_dp_dQ = b.d_delta_p(Qloc[i], self.f)   # derivative wrt physical Q
@@ -346,7 +346,7 @@ class HydraulicNetwork:
                 J[i, nQ + self._iP[frm]] = 1.0
             if to in self._iP:
                 J[i, nQ + self._iP[to]] = -1.0
-        # massa rows (incidence ± dmap for check)
+        # mass rows 
         for n in self._unk_nd:
             row = nQ + self._iP[n.id]
             for b in self._unk_br:
@@ -361,7 +361,7 @@ class HydraulicNetwork:
             J *= S[:, None]
         return J
 
-    # NEW: sparse Jacobian assembly (CSR)
+    # sparse Jacobian assembly
     def _jac_sparse(self, x: np.ndarray, *, P_scale: float, Q_scale: float, scale: bool) -> csr_matrix:
         nQ, nP = len(self._unk_br), len(self._unk_nd)
         I: List[int] = []
@@ -380,7 +380,7 @@ class HydraulicNetwork:
             else:
                 dmap[i] = 1.0
                 Qloc[i] = qhat
-        # energia rows
+        # energy rows
         for b in self._unk_br:
             i = self._iQ[b.id]
             d_dp_dQ = b.d_delta_p(Qloc[i], self.f)
@@ -414,9 +414,9 @@ class HydraulicNetwork:
         Q_scale: float | None = None,
         analytic_jac: bool = True,
         log_physics: bool = True,
-        use_sparse: bool = False,          # NEW: enable sparse Jacobian path
-        max_iter: int = 50,                # NEW: sparse Newton max iterations
-        line_search: bool = True           # NEW: sparse backtracking
+        use_sparse: bool = False,          #enable sparse Jacobian path
+        max_iter: int = 50,                #sparse Newton max iterations
+        line_search: bool = True           #sparse backtracking
     ) -> Dict[str, pd.DataFrame]:
         nQ, nP = len(self._unk_br), len(self._unk_nd)
         x0 = self.build_initial_guess() if initial_guess is None else np.asarray(initial_guess, float)
@@ -459,7 +459,6 @@ class HydraulicNetwork:
                 nrm_trial = np.linalg.norm(r_trial)
                 if line_search:
                     nrm = np.linalg.norm(r)
-                    # light backtracking (sufficient decrease)
                     while nrm_trial > (0.9 if k > 0 else 1.0) * nrm and step > 1e-3:
                         step *= 0.5
                         x_trial = x + step * dx
@@ -483,7 +482,7 @@ class HydraulicNetwork:
             if Re_vals:
                 print(f"[LOG] max Re = {max(Re_vals):.1f}, min P = {min(Pv) if len(Pv)>0 else min(self._Pfix.values()) :.0f} Pa", file=sys.stderr)
 
-        # Build solution dicts (report raw unknown Qv; for check, physical flow is softplus(Qv))
+        # Build solution dicts 
         flows = []
         for b in self._unk_br:
             qhat = Qv[self._iQ[b.id]]
@@ -493,7 +492,7 @@ class HydraulicNetwork:
                 "from": b.from_node,
                 "to": b.to_node,
                 "type": b.type,
-                "Q_m3_s": qphys,   # report physical (rectified) flow
+                "Q_m3_s": qphys,   
                 "dP_Pa": b.delta_p(qphys, self.f),
                 "dz_m": self.nodes[b.from_node].z - self.nodes[b.to_node].z,
             })
@@ -503,7 +502,6 @@ class HydraulicNetwork:
             + [{"node": nid, "P_Pa": Pv[idx], "fixed": False} for nid, idx in self._iP.items()]
         )
 
-        # Checks (use physical flows for diagnostics)
         Qphys_for_checks = {}
         for b in self._unk_br:
             qhat = Qv[self._iQ[b.id]]
@@ -524,9 +522,8 @@ class HydraulicNetwork:
 
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    # simple CLI: python DT_v2_updated.py network.json [--sparse] [--no-analytic] [--tol 1e-9]
     if len(sys.argv) < 2:
-        print("Usage: python DT_v2_updated.py network.json [--sparse] [--no-analytic] [--tol 1e-9]", file=sys.stderr)
+        print("Usage: python solver.py network.json [--sparse] [--no-analytic] [--tol 1e-9]", file=sys.stderr)
         sys.exit(1)
 
     json_path = None
@@ -543,7 +540,7 @@ if __name__ == "__main__":
             analytic = False
         elif arg.startswith("--tol"):
             try:
-                tol = float(arg.split()[1])  # support "--tol 1e-9"
+                tol = float(arg.split()[1])  
             except Exception:
                 # also support "--tol=1e-9"
                 eq = arg.split("=")
