@@ -10,8 +10,8 @@ This solver is a 0‑D network model:
 - **Mass balance (continuity) at nodes**  
   For each node with unknown pressure, the net flow must balance external demand/injection:
   - Positive external `Q` means flow leaving the node (demand).
-  - The solver enforces: sum(in) − sum(out) + Q_ext = 0.  
-  (Sign convention matches the implementation.)  
+  - The solver enforces: sum(in) − sum(out) + Q_ext = 0.
+    
 - **Energy balance on each branch** (written in pressure units, Pa)  
   For each branch:
   \[
@@ -20,7 +20,7 @@ This solver is a 0‑D network model:
   where `z` is elevation (m).
 
 ### Pipe pressure drop
-For a pipe (and also for a check valve when open), the model uses Darcy–Weisbach in the form:
+For a pipe the model uses Darcy–Weisbach in the form:
 
 - Velocity: `V = Q / A`
 - Reynolds: `Re = ρ |V| D / μ`
